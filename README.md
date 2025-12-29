@@ -2,6 +2,8 @@
 
 一个现代化的 React 应用，用于实时监控全球多个国家/地区的 Mac App Store 排行榜。支持查看免费榜和付费榜，提供详细的应用信息、多语言界面以及个性化设置。
 
+**🔗 在线演示**: [https://mac-apps-monitor.vercel.app/](https://mac-apps-monitor.vercel.app/)
+
 ## ✨ 功能特性 (Features)
 
 *   **🌍 多国榜单监控**: 支持美国 (US)、中国 (CN)、日本 (JP)、英国 (GB)、德国 (DE)、法国 (FR)、加拿大 (CA)、澳大利亚 (AU) 等主要市场。
