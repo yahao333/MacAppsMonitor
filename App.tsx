@@ -1,23 +1,131 @@
-
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { ChartType, AppRankingItem, RefreshInterval, CacheData, Language, AppSettings } from './types';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { ChartType, AppData, AppSettings } from './types';
 import { 
   CHART_LABELS, 
   DEFAULT_INTERVAL, 
   LOCAL_STORAGE_KEYS,
   TRANSLATIONS,
-  SUPPORTED_COUNTRIES
+  SUPPORTED_COUNTRIES,
+  SIDEBAR_ITEMS,
+  SidebarItem
 } from './constants';
-import { fetchRankings } from './services/appleApi';
+import { fetchAppStoreData, fetchDiscoverData, DiscoverSection } from './services/appleApi';
 import { RefreshIcon, SettingsIcon } from './components/Icons';
 import AppDetails from './components/AppDetails';
 import Settings from './components/Settings';
 
+// Sidebar Icon Component Helper
+const SidebarIcon = ({ name }: { name: string }) => {
+  switch (name) {
+    case 'Star': return <span className="mr-2">★</span>;
+    case 'GameController': return <span className="mr-2">🎮</span>;
+    case 'Brush': return <span className="mr-2">🎨</span>;
+    case 'Briefcase': return <span className="mr-2">💼</span>;
+    case 'Rocket': return <span className="mr-2">🚀</span>;
+    case 'Code': return <span className="mr-2">💻</span>;
+    case 'Grid': return <span className="mr-2">⊞</span>;
+    default: return <span className="mr-2">•</span>;
+  }
+};
+
+// 横向滚动的 App 列表组件
+const SectionList = ({ 
+  title, 
+  apps, 
+  onAppClick 
+}: { 
+  title: string; 
+  apps: AppData[]; 
+  onAppClick: (appId: string) => void;
+}) => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const scroll = (direction: 'left' | 'right') => {
+    if (scrollRef.current) {
+      const scrollAmount = 800; // Scroll roughly 2-3 columns
+      scrollRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  return (
+    <div className="mb-8" key={title}>
+      <div className="flex items-center justify-between mb-4 px-1">
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white">{title}</h2>
+        <div className="flex gap-2">
+          <button 
+            onClick={() => scroll('left')}
+            className="p-1.5 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+          >
+            ←
+          </button>
+          <button 
+            onClick={() => scroll('right')}
+            className="p-1.5 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+          >
+            →
+          </button>
+        </div>
+      </div>
+      
+      <div 
+        ref={scrollRef}
+        className="grid grid-rows-3 grid-flow-col gap-x-4 gap-y-3 overflow-x-auto pb-4 pt-2 px-2 snap-x snap-mandatory no-scrollbar"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        {apps.map((app, index) => (
+          <div 
+            key={app.id}
+            className="w-[320px] snap-start bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:shadow-md transition-shadow cursor-pointer flex items-center"
+            onClick={() => onAppClick(app.id)}
+          >
+            <div className="flex items-center gap-3 relative w-full">
+              <span className="text-lg font-bold text-slate-400 dark:text-slate-500 w-6 text-center flex-shrink-0">
+                {app.rank}
+              </span>
+              <img 
+                src={app.iconUrl} 
+                alt={app.name} 
+                className="w-14 h-14 rounded-[12px] shadow-sm border border-slate-100 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 flex-shrink-0"
+                loading="lazy"
+              />
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-slate-900 dark:text-white truncate text-sm leading-tight mb-0.5" title={app.name}>{app.name}</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate mb-1">{app.category}</p>
+                <div className="flex items-center justify-between">
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    app.price === '免费' || app.price === 'Free'
+                      ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                      : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                  }`}>
+                    {app.price}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const App: React.FC = () => {
-  const [activeChart, setActiveChart] = useState<ChartType>('top-free');
-  const [chartData, setChartData] = useState<Record<string, AppRankingItem[]>>({});
-  const [lastUpdated, setLastUpdated] = useState<Record<string, number | null>>({});
+  // ChartType 不再作为顶部 Tab，而是内部逻辑
+  // const [activeChart, setActiveChart] = useState<ChartType>('top-free');
   
+  // 聚合数据 State
+  const [discoverData, setDiscoverData] = useState<DiscoverSection[]>([]);
+  const [lastUpdated, setLastUpdated] = useState<number | null>(null);
+  
+  // Sidebar State
+  const [selectedSidebarId, setSelectedSidebarId] = useState<string>('discover');
+  const [selectedGenre, setSelectedGenre] = useState<number | undefined>(undefined);
+  // 当前选中的 Sidebar Item 的 Label，用于显示标题
+  const [currentTitle, setCurrentTitle] = useState<string>('Discover');
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
@@ -43,237 +151,206 @@ const App: React.FC = () => {
   const currentCountry = SUPPORTED_COUNTRIES.find(c => c.code === settings.countryCode) || SUPPORTED_COUNTRIES[0];
   const t = TRANSLATIONS[lang];
 
-  // 构造特定于国家和榜单的缓存键
-  const getCacheKey = (country: string, chart: ChartType) => `${country}_${chart}`;
+  // 构造特定于国家和榜单和分类的缓存键
+  const getCacheKey = (country: string, chart: string, genre: number | undefined) => 
+    `${country}_${chart}_${genre || 'all'}`;
 
-  useEffect(() => {
-    console.debug("[缓存] 加载全局排行榜缓存...");
-    const cached = localStorage.getItem(LOCAL_STORAGE_KEYS.CHART_CACHE);
-    if (cached) {
-      try {
-        const parsed: Record<string, CacheData<AppRankingItem[]>> = JSON.parse(cached);
-        const newData: Record<string, AppRankingItem[]> = {};
-        const newTimes: Record<string, number | null> = {};
-        
-        Object.keys(parsed).forEach(key => {
-          newData[key] = parsed[key].data;
-          newTimes[key] = parsed[key].timestamp;
-        });
-        
-        setChartData(newData);
-        setLastUpdated(newTimes);
-      } catch (e) {
-        console.error("[缓存] 解析失败:", e);
-      }
-    }
-  }, []);
-
-  const loadChartData = useCallback(async (chart: ChartType, force: boolean = false) => {
-    const cacheKey = getCacheKey(settings.countryCode, chart);
+  const loadData = useCallback(async (force: boolean = false) => {
+    // 无论是 Discover 还是 Category，都使用 "discover" 作为缓存键前缀的一部分
+    // 如果是 Category，selectedGenre 会有值
+    const cacheKey = getCacheKey(settings.countryCode, 'discover_view', selectedGenre);
     const now = Date.now();
-    const lastTime = lastUpdated[cacheKey];
     
-    if (!force && lastTime && (now - lastTime < settings.refreshInterval.value) && chartData[cacheKey]) {
+    // 简单的内存缓存检查 (lastUpdated)
+    if (!force && lastUpdated === now) {
       return;
     }
 
-    console.debug(`[榜单] 开始获取数据: ${settings.countryCode} - ${chart}`);
+    console.debug(`[Discover] 开始获取聚合数据: ${settings.countryCode} - Genre: ${selectedGenre}`);
     setLoading(true);
     setError(null);
+
     try {
-      const response = await fetchRankings(settings.countryCode, chart);
-      const results = response?.feed?.results;
-      
-      if (!results) throw new Error("results_missing");
-      
-      setChartData(prev => ({ ...prev, [cacheKey]: results }));
-      setLastUpdated(prev => ({ ...prev, [cacheKey]: now }));
-
-      const existingStr = localStorage.getItem(LOCAL_STORAGE_KEYS.CHART_CACHE);
-      const existing = existingStr ? JSON.parse(existingStr) : {};
-      existing[cacheKey] = { timestamp: now, data: results };
-      localStorage.setItem(LOCAL_STORAGE_KEYS.CHART_CACHE, JSON.stringify(existing));
-
+      // 总是调用 fetchDiscoverData 来获取聚合的 Sections
+      const sections = await fetchDiscoverData(settings.countryCode, selectedGenre);
+      setDiscoverData(sections);
+      setLastUpdated(now);
     } catch (err: any) {
-      console.error(`[榜单] ${settings.countryCode} ${chart} 失败:`, err);
-      let msg = t.errorFetch
-        .replace('{chart}', CHART_LABELS[lang][chart])
-        .replace('{country}', currentCountry.name[lang]);
-      if (err.message === 'results_missing') msg += t.errorFormat;
-      else msg += t.errorNetwork;
-      setError(msg);
+      console.error(`[Discover] 获取失败:`, err);
+      setError(t.errorNetwork);
     } finally {
       setLoading(false);
     }
-  }, [lastUpdated, chartData, settings.refreshInterval, settings.countryCode, lang, t, currentCountry]);
+  }, [settings.countryCode, selectedGenre, lastUpdated, t]);
 
   useEffect(() => {
-    loadChartData(activeChart);
-  }, [activeChart, loadChartData]);
+    loadData();
+  }, [loadData]);
 
+  // 定时刷新
   useEffect(() => {
-    const timer = setInterval(() => loadChartData(activeChart), 60000); 
+    const timer = setInterval(() => loadData(), 60000 * 5); // 5分钟刷新一次
     return () => clearInterval(timer);
-  }, [activeChart, loadChartData]);
+  }, [loadData]);
 
-  const updateSettings = (newSettings: Partial<AppSettings>) => {
-    const updated = { ...settings, ...newSettings };
-    setSettings(updated);
-    localStorage.setItem(LOCAL_STORAGE_KEYS.SETTINGS, JSON.stringify(updated));
-    console.debug("[设置] 已更新:", newSettings);
+  const handleSidebarClick = (item: SidebarItem) => {
+    if (item.type === 'link' && item.id === 'discover') {
+      setSelectedSidebarId(item.id);
+      setSelectedGenre(undefined);
+      setCurrentTitle('Discover');
+      return;
+    }
+
+    if (item.type === 'category' && item.genreId) {
+      setSelectedSidebarId(item.id);
+      setSelectedGenre(item.genreId);
+      setCurrentTitle(item.label);
+    }
   };
 
-  const currentList = useMemo(() => {
-    const key = getCacheKey(settings.countryCode, activeChart);
-    return chartData[key] || [];
-  }, [chartData, activeChart, settings.countryCode]);
+  const updateSettings = (newSettings: Partial<AppSettings>) => {
+    setSettings(prev => {
+      const updated = { ...prev, ...newSettings };
+      localStorage.setItem(LOCAL_STORAGE_KEYS.SETTINGS, JSON.stringify(updated));
+      return updated;
+    });
+  };
 
-  const currentUpdate = useMemo(() => {
-    const key = getCacheKey(settings.countryCode, activeChart);
-    return lastUpdated[key] || null;
-  }, [lastUpdated, activeChart, settings.countryCode]);
+  const renderSidebarItem = (item: SidebarItem, depth = 0) => {
+    const isSelected = selectedSidebarId === item.id;
+    const hasChildren = item.children && item.children.length > 0;
+    
+    return (
+      <div key={item.id} className="select-none">
+        <div 
+          className={`flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer mb-1 transition-colors
+            ${isSelected 
+              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' 
+              : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}
+            ${depth > 0 ? 'ml-4' : ''}`}
+          onClick={() => handleSidebarClick(item)}
+        >
+          {item.icon && <SidebarIcon name={item.icon} />}
+          <span className="truncate flex-1">{item.label}</span>
+        </div>
+        {hasChildren && (
+          <div className="mt-1">
+            {item.children!.map(child => renderSidebarItem(child, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const selectedApp = useMemo(() => {
+    if (!selectedAppId) return null;
+    for (const section of discoverData) {
+      const found = section.data.find(app => app.id === selectedAppId);
+      if (found) return found;
+    }
+    return null;
+  }, [selectedAppId, discoverData]);
 
   return (
-    <div className="min-h-screen pb-12 flex flex-col">
-      <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors flex flex-col">
+      <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-40 border-b border-slate-200 dark:border-slate-800 flex-none">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
-              <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z" />
-              </svg>
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-blue-500/30">
+              M
             </div>
-            <div className="flex flex-col">
-               <h1 className="font-bold text-sm sm:text-lg tracking-tight text-slate-900 dark:text-white leading-tight">
-                {t.title.split(' ')[0]} <span className="text-blue-500">{t.title.split(' ').slice(1).join(' ')}</span>
-              </h1>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest -mt-0.5">
-                {currentCountry.name[lang]}
-              </span>
-            </div>
+            <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300">
+              MacAppsMonitor
+            </h1>
+            <span className="mx-2 text-slate-300 dark:text-slate-700">|</span>
+            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">{currentTitle}</span>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-4">
-             <div className="hidden md:flex flex-col items-end mr-2 text-[10px] text-slate-500 uppercase font-semibold">
-              <span>{t.lastSync}</span>
-              <span className="text-slate-900 dark:text-slate-300">
-                {currentUpdate ? new Date(currentUpdate).toLocaleTimeString(lang === 'zh' ? 'zh-CN' : 'en-US') : t.never}
-              </span>
-            </div>
-            
-            <button 
-              onClick={() => loadChartData(activeChart, true)}
-              className={`p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors ${loading ? 'animate-spin' : ''}`}
-              title={t.refresh}
-              disabled={loading}
-            >
-              <RefreshIcon className="w-5 h-5" />
-            </button>
-            <button 
-              onClick={() => setIsSettingsOpen(true)}
-              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-              title={t.settings}
-            >
-              <SettingsIcon className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
+          <div className="flex items-center gap-4">
+             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300">
+               <span>{currentCountry.name[lang]}</span>
+             </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex gap-1 py-3 overflow-x-auto no-scrollbar">
-            {(['top-free', 'top-paid'] as ChartType[]).map((chart) => (
-              <button
-                key={chart}
-                onClick={() => setActiveChart(chart)}
-                className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${
-                  activeChart === chart
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                    : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                {CHART_LABELS[lang][chart]}
-              </button>
-            ))}
+             <button 
+               onClick={() => loadData(true)} 
+               disabled={loading}
+               className={`p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-all ${loading ? 'animate-spin' : 'hover:rotate-180'}`}
+               title={t.refresh}
+             >
+               <RefreshIcon />
+             </button>
+
+             <button 
+               onClick={() => setIsSettingsOpen(true)}
+               className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
+               title={t.settings}
+             >
+               <SettingsIcon />
+             </button>
           </div>
         </div>
       </header>
 
-      <main className="flex-grow max-w-5xl mx-auto w-full px-4 sm:px-6 py-8">
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-center justify-between">
-            <div className="flex items-center gap-3">
-               <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-               <p className="text-red-600 dark:text-red-400 text-sm font-medium">{error}</p>
-            </div>
-            <button onClick={() => loadChartData(activeChart, true)} className="text-red-700 dark:text-red-300 text-xs font-bold underline">{t.retry}</button>
-          </div>
-        )}
+      <div className="flex flex-1 max-w-7xl mx-auto w-full overflow-hidden">
+        {/* Sidebar */}
+        <aside className="w-64 py-8 pl-4 pr-2 hidden md:block overflow-y-auto custom-scrollbar">
+          <nav className="space-y-1">
+            {SIDEBAR_ITEMS.map(item => renderSidebarItem(item))}
+          </nav>
+        </aside>
 
-        {loading && currentList.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
-            <p className="mt-4 text-slate-500 font-medium animate-pulse">{t.loadingRankings}</p>
-          </div>
-        ) : (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden divide-y divide-slate-100 dark:divide-slate-800 transition-colors">
-            {currentList.length > 0 ? (
-              currentList.map((item, index) => (
-                <button
-                  key={`${settings.countryCode}_${item.id}`}
-                  onClick={() => setSelectedAppId(item.id)}
-                  className="w-full text-left px-5 py-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group"
-                >
-                  <span className="w-8 text-lg font-bold text-slate-300 dark:text-slate-700 group-hover:text-blue-500 transition-colors tabular-nums">
-                    {index + 1}
-                  </span>
-                  <img 
-                    src={item.artworkUrl100} 
-                    alt={item.name} 
-                    className="w-12 h-12 rounded-xl shadow-sm bg-slate-100 dark:bg-slate-800 flex-none"
-                    loading="lazy"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-slate-900 dark:text-white truncate group-hover:text-blue-500 transition-colors">
-                      {item.name}
-                    </h3>
-                    <p className="text-xs text-slate-500 truncate mt-0.5">
-                      {item.artistName}
-                    </p>
+        {/* Main Content */}
+        <main className="flex-1 px-4 sm:px-6 py-8 overflow-y-auto custom-scrollbar">
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                 <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                 <p className="text-red-600 dark:text-red-400 text-sm font-medium">{error}</p>
+              </div>
+              <button onClick={() => loadData(true)} className="text-red-700 dark:text-red-300 text-xs font-bold underline">{t.retry}</button>
+            </div>
+          )}
+
+          {loading && discoverData.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+              <p className="mt-4 text-slate-500 font-medium animate-pulse">{t.loadingRankings}</p>
+            </div>
+          ) : (
+            <div className="space-y-8">
+              {discoverData.length === 0 ? (
+                 <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+                    <p className="text-slate-500 dark:text-slate-400">{t.noData}</p>
+                 </div>
+              ) : (
+                discoverData.filter(section => section.data.length > 0).map((section) => (
+                  <div key={section.type}>
+                    <SectionList 
+                      title={CHART_LABELS[lang][section.type] || section.title}
+                      apps={section.data}
+                      onAppClick={setSelectedAppId}
+                    />
                   </div>
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity text-blue-500">
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                </button>
-              ))
-            ) : !loading && (
-               <div className="py-20 text-center text-slate-500">
-                  {t.noData}
-               </div>
-            )}
-          </div>
-        )}
-      </main>
+                ))
+              )}
+            </div>
+          )}
+        </main>
+      </div>
 
       <AppDetails 
-        appId={selectedAppId} 
-        onClose={() => setSelectedAppId(null)} 
-        language={lang}
+        app={selectedApp} 
+        isOpen={!!selectedAppId} 
+        onClose={() => setSelectedAppId(null)}
         countryCode={settings.countryCode}
       />
       
-      <Settings 
-        isOpen={isSettingsOpen} 
-        onClose={() => setIsSettingsOpen(false)} 
+      <Settings
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
         settings={settings}
-        onSettingsChange={updateSettings}
+        onUpdate={updateSettings}
       />
-
-      <footer className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center text-slate-400 text-xs transition-colors">
-        <p>© {new Date().getFullYear()} {t.footerCredit} · {currentCountry.name[lang]}</p>
-        <p className="mt-1">{t.footerProxy}</p>
-      </footer>
     </div>
   );
 };

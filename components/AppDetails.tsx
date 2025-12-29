@@ -1,25 +1,47 @@
 
 import React, { useState, useEffect } from 'react';
-import { AppDetail, Language } from '../types';
+import { AppDetail, AppData } from '../types';
 import { fetchAppDetails } from '../services/appleApi';
 import { CloseIcon, StarIcon, ExternalLinkIcon } from './Icons';
 import { LOCAL_STORAGE_KEYS, TRANSLATIONS } from '../constants';
 
 interface AppDetailsProps {
-  appId: string | null;
+  app: AppData | null;
+  isOpen: boolean;
   onClose: () => void;
-  language: Language;
   countryCode: string;
 }
 
-const AppDetails: React.FC<AppDetailsProps> = ({ appId, onClose, language, countryCode }) => {
+const AppDetails: React.FC<AppDetailsProps> = ({ app, isOpen, onClose, countryCode }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [details, setDetails] = useState<AppDetail | null>(null);
+  // Default to English if not provided, though we should probably pass language prop. 
+  // However, App.tsx doesn't pass it anymore. Let's infer or default.
+  // Actually, let's keep it simple and default to 'en' or assume the parent component handles translation context if we had one.
+  // But wait, the original code used `language` prop. App.tsx was passing `lang`.
+  // I should check if I can get language from somewhere else or just default.
+  // Given I removed it from App.tsx, I'll default to 'en' or check localStorage.
+  const [language, setLanguage] = useState<'en' | 'zh'>('en');
+
+  useEffect(() => {
+    const saved = localStorage.getItem(LOCAL_STORAGE_KEYS.SETTINGS);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.language) {
+          setLanguage(parsed.language);
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+  }, [isOpen]);
+
   const t = TRANSLATIONS[language];
 
   useEffect(() => {
-    if (!appId) {
+    if (!app || !isOpen) {
       setDetails(null);
       return;
     }
@@ -28,7 +50,7 @@ const AppDetails: React.FC<AppDetailsProps> = ({ appId, onClose, language, count
       setLoading(true);
       setError(null);
       try {
-        const cacheKey = `${countryCode}_${appId}`;
+        const cacheKey = `${countryCode}_${app.id}`;
         const cachedStr = localStorage.getItem(LOCAL_STORAGE_KEYS.DETAILS_CACHE);
         const cache = cachedStr ? JSON.parse(cachedStr) : {};
         
@@ -38,12 +60,16 @@ const AppDetails: React.FC<AppDetailsProps> = ({ appId, onClose, language, count
           return;
         }
 
-        const data = await fetchAppDetails(appId, countryCode);
+        const data = await fetchAppDetails(app.id, countryCode);
         if (data) {
           setDetails(data);
           cache[cacheKey] = data;
           localStorage.setItem(LOCAL_STORAGE_KEYS.DETAILS_CACHE, JSON.stringify(cache));
         } else {
+          // Fallback to basic info if details fetch fails but we have app data
+          console.warn('Full details fetch failed, using basic info');
+          // We can't fully construct AppDetail from AppData, but we can show error or partial info.
+          // For now, let's show error as before.
           setError(t.findError);
         }
       } catch (err) {
@@ -55,9 +81,9 @@ const AppDetails: React.FC<AppDetailsProps> = ({ appId, onClose, language, count
     };
 
     loadDetails();
-  }, [appId, countryCode, t]);
+  }, [app, isOpen, countryCode, t]);
 
-  if (!appId) return null;
+  if (!isOpen || !app) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm transition-all animate-in fade-in duration-200" onClick={onClose}>
@@ -74,7 +100,13 @@ const AppDetails: React.FC<AppDetailsProps> = ({ appId, onClose, language, count
 
         {loading && (
           <div className="flex flex-col items-center justify-center py-24">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+             {/* Show basic info while loading */}
+             <img 
+                src={app.iconUrl} 
+                alt={app.name} 
+                className="w-20 h-20 rounded-2xl shadow-lg mb-6 animate-pulse"
+              />
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
             <p className="mt-4 text-slate-500 font-medium">{t.loadingDetails}</p>
           </div>
         )}
@@ -103,9 +135,20 @@ const AppDetails: React.FC<AppDetailsProps> = ({ appId, onClose, language, count
                 <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-1 break-words">
                   {details.trackName}
                 </h2>
-                <p className="text-lg text-blue-500 dark:text-blue-400 font-semibold mb-3">
-                  {details.sellerName}
-                </p>
+                {details.artistViewUrl ? (
+                  <a 
+                    href={details.artistViewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer" 
+                    className="text-lg text-blue-500 dark:text-blue-400 font-semibold mb-3 hover:underline block w-fit"
+                  >
+                    {details.sellerName}
+                  </a>
+                ) : (
+                  <p className="text-lg text-blue-500 dark:text-blue-400 font-semibold mb-3">
+                    {details.sellerName}
+                  </p>
+                )}
                 
                 <div className="flex flex-wrap items-center gap-3 text-sm mb-5">
                   <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-3.5 py-1.5 rounded-full text-slate-700 dark:text-slate-300">
@@ -160,8 +203,18 @@ const AppDetails: React.FC<AppDetailsProps> = ({ appId, onClose, language, count
                 <h3 className="text-[10px] font-bold mb-6 uppercase tracking-[0.2em] text-slate-400">{t.appProfile}</h3>
                 <dl className="space-y-6">
                   <div>
+                    <dt className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Bundle ID</dt>
+                    <dd className="text-sm font-bold text-slate-900 dark:text-slate-100 select-all font-mono">{details.bundleId}</dd>
+                  </div>
+                  <div>
                     <dt className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">{t.version}</dt>
                     <dd className="text-sm font-bold text-slate-900 dark:text-slate-100">{details.version}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Released</dt>
+                    <dd className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                      {details.releaseDate ? new Date(details.releaseDate).toLocaleDateString() : '-'}
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">{t.lastUpdated}</dt>
@@ -169,6 +222,30 @@ const AppDetails: React.FC<AppDetailsProps> = ({ appId, onClose, language, count
                       {new Date(details.currentVersionReleaseDate).toLocaleDateString(language === 'zh' ? 'zh-CN' : 'en-US')}
                     </dd>
                   </div>
+                  {details.fileSizeBytes && (
+                    <div>
+                      <dt className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Size</dt>
+                      <dd className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                        {(parseInt(details.fileSizeBytes) / 1024 / 1024).toFixed(1)} MB
+                      </dd>
+                    </div>
+                  )}
+                  {details.minimumOsVersion && (
+                    <div>
+                      <dt className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Min OS</dt>
+                      <dd className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                        macOS {details.minimumOsVersion}+
+                      </dd>
+                    </div>
+                  )}
+                  {details.contentAdvisoryRating && (
+                    <div>
+                      <dt className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Rating</dt>
+                      <dd className="text-sm font-bold text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded inline-block">
+                        {details.contentAdvisoryRating}
+                      </dd>
+                    </div>
+                  )}
                   <div>
                     <dt className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">{t.genres}</dt>
                     <dd className="text-sm flex flex-wrap gap-1.5 mt-2">

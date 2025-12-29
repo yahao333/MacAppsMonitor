@@ -18,13 +18,93 @@ export const SUPPORTED_COUNTRIES: Country[] = [
 export const CHART_LABELS: Record<Language, Record<ChartType, string>> = {
   en: {
     'top-free': 'Top Free',
-    'top-paid': 'Top Paid'
+    'top-paid': 'Top Paid',
+    'top-grossing': 'Top Grossing',
+    'new-apps': 'New Apps',
+    'new-free': 'New Free',
+    'new-paid': 'New Paid',
+    'top-free-games': 'Top Free Games',
+    'top-paid-games': 'Top Paid Games'
   },
   zh: {
     'top-free': '免费榜',
-    'top-paid': '付费榜'
+    'top-paid': '付费榜',
+    'top-grossing': '畅销榜',
+    'new-apps': '新上架',
+    'new-free': '新免费',
+    'new-paid': '新付费',
+    'top-free-games': '免费游戏榜',
+    'top-paid-games': '付费游戏榜'
   }
 };
+
+export interface SidebarItem {
+  id: string;
+  label: string;
+  icon?: string;
+  type: 'group' | 'category' | 'link';
+  genreId?: number;
+  children?: SidebarItem[];
+}
+
+export const SIDEBAR_ITEMS: SidebarItem[] = [
+  { id: 'discover', label: 'Discover', type: 'link', icon: 'Star' },
+  { id: 'arcade', label: 'Arcade', type: 'link', icon: 'GameController', genreId: undefined }, // Skip for now
+  { 
+    id: 'create', label: 'Create', type: 'group', icon: 'Brush',
+    children: [
+      { id: 'graphics-design', label: 'Graphics & Design', type: 'category', genreId: 6027 },
+      { id: 'music', label: 'Music', type: 'category', genreId: 6011 },
+      { id: 'photo-video', label: 'Photo & Video', type: 'category', genreId: 6008 },
+      { id: 'entertainment', label: 'Entertainment', type: 'category', genreId: 6016 }
+    ]
+  },
+  {
+    id: 'work', label: 'Work', type: 'group', icon: 'Briefcase',
+    children: [
+      { id: 'productivity', label: 'Productivity', type: 'category', genreId: 6007 },
+      { id: 'business', label: 'Business', type: 'category', genreId: 6000 },
+      { id: 'finance', label: 'Finance', type: 'category', genreId: 6015 },
+      { id: 'utilities', label: 'Utilities', type: 'category', genreId: 6002 }
+    ]
+  },
+  {
+    id: 'play', label: 'Play', type: 'group', icon: 'Rocket',
+    children: [
+      { id: 'games', label: 'Games', type: 'category', genreId: 6014 }
+    ]
+  },
+  {
+    id: 'develop', label: 'Develop', type: 'group', icon: 'Code',
+    children: [
+      { id: 'developer-tools', label: 'Developer Tools', type: 'category', genreId: 6026 }
+    ]
+  },
+  {
+    id: 'categories', label: 'Categories', type: 'group', icon: 'Grid',
+    children: [
+      { id: 'cat-productivity', label: 'Productivity', type: 'category', genreId: 6007 },
+      { id: 'cat-utilities', label: 'Utilities', type: 'category', genreId: 6002 },
+      { id: 'cat-photo-video', label: 'Photo & Video', type: 'category', genreId: 6008 },
+      { id: 'cat-games', label: 'Games', type: 'category', genreId: 6014 },
+      { id: 'cat-business', label: 'Business', type: 'category', genreId: 6000 },
+      { id: 'cat-education', label: 'Education', type: 'category', genreId: 6017 },
+      { id: 'cat-music', label: 'Music', type: 'category', genreId: 6011 },
+      { id: 'cat-social', label: 'Social Networking', type: 'category', genreId: 6005 },
+      { id: 'cat-lifestyle', label: 'Lifestyle', type: 'category', genreId: 6012 },
+      { id: 'cat-news', label: 'News', type: 'category', genreId: 6009 },
+      { id: 'cat-medical', label: 'Medical', type: 'category', genreId: 6020 },
+      { id: 'cat-sports', label: 'Sports', type: 'category', genreId: 6004 },
+      { id: 'cat-travel', label: 'Travel', type: 'category', genreId: 6003 },
+      { id: 'cat-health', label: 'Health & Fitness', type: 'category', genreId: 6013 },
+      { id: 'cat-weather', label: 'Weather', type: 'category', genreId: 6001 },
+      { id: 'cat-navigation', label: 'Navigation', type: 'category', genreId: 6010 },
+      { id: 'cat-shopping', label: 'Shopping', type: 'category', genreId: 6024 },
+      { id: 'cat-reference', label: 'Reference', type: 'category', genreId: 6006 },
+      { id: 'cat-finance', label: 'Finance', type: 'category', genreId: 6015 }
+    ]
+  }
+];
 
 export const REFRESH_INTERVALS: RefreshInterval[] = [
   { label: '1 Hour', value: 3600000 },
