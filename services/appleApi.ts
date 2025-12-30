@@ -147,32 +147,36 @@ async function smartFetch(url: string, retries = 3): Promise<any> {
  */
 async function smartFetchText(url: string): Promise<string> {
   let lastError: any;
-  
-  // 1. 尝试直接请求
-  try {
-    const directUrl = useDevProxyIfWeb(url);
-    console.log(`[网络] 尝试直接文本请求: ${directUrl} (orig=${url})`);
-    const response = await fetch(directUrl);
-    if (response.ok) {
-      const text = await response.text();
-      console.log(`[网络] 文本直连成功: status=${response.status} length=${text.length}`);
-      return text;
-    } else {
-      console.warn(`[网络] 文本直连非 2xx: status=${response.status} url=${directUrl}`);
-    }
-  } catch (e) {
-    console.warn('[网络] 文本直连失败，切换代理...', (e as any)?.message);
-  }
 
-  // 构造 Jina AI Reader URL (这是一个可以将网页转换为 Markdown/Text 的服务，有时用于绕过反爬)
-  const jinaUrl = `https://r.jina.ai/${url}`;
-    
-  // 检测运行环境
   const g: any = typeof globalThis !== 'undefined' ? (globalThis as any) : {};
   const isWebRuntime =
     typeof g.window !== 'undefined' ||
     typeof g.document !== 'undefined' ||
     (typeof g.navigator !== 'undefined' && typeof g.location !== 'undefined');
+  const isDev = Boolean((import.meta as any)?.env?.DEV);
+  
+  // 1. 尝试直接请求
+  if (isWebRuntime && !isDev && url.startsWith('https://apps.apple.com/')) {
+    console.warn(`[网络] 已跳过文本直连(浏览器非开发环境容易触发CORS): url=${url}`);
+  } else {
+    try {
+      const directUrl = useDevProxyIfWeb(url);
+      console.log(`[网络] 尝试直接文本请求: ${directUrl} (orig=${url})`);
+      const response = await fetch(directUrl);
+      if (response.ok) {
+        const text = await response.text();
+        console.log(`[网络] 文本直连成功: status=${response.status} length=${text.length}`);
+        return text;
+      } else {
+        console.warn(`[网络] 文本直连非 2xx: status=${response.status} url=${directUrl}`);
+      }
+    } catch (e) {
+      console.warn('[网络] 文本直连失败，切换代理...', (e as any)?.message);
+    }
+  }
+
+  // 构造 Jina AI Reader URL (这是一个可以将网页转换为 Markdown/Text 的服务，有时用于绕过反爬)
+  const jinaUrl = `https://r.jina.ai/${url}`;
     
   console.log(
     `[网络] smartFetchText 运行环境: isWebRuntime=${isWebRuntime}`
@@ -183,10 +187,7 @@ async function smartFetchText(url: string): Promise<string> {
     { base: 'https://r.jina.ai/http://', url: jinaUrl, mode: 'text' as const },
     { base: 'https://corsproxy.io/?', url: `https://corsproxy.io/?${encodeURIComponent(url)}`, mode: 'text' as const },
     { base: 'https://thingproxy.freeboard.io/fetch/', url: `https://thingproxy.freeboard.io/fetch/${url}`, mode: 'text' as const },
-    // 浏览器环境下避免使用 AllOrigins 获取文本，因为它返回 JSON
-    ...(isWebRuntime
-      ? []
-      : [{ base: 'https://api.allorigins.win/get?disableCache=true&url=', url: `https://api.allorigins.win/get?disableCache=true&url=${encodeURIComponent(url)}`, mode: 'json_contents' as const }])
+    { base: 'https://api.allorigins.win/get?disableCache=true&url=', url: `https://api.allorigins.win/get?disableCache=true&url=${encodeURIComponent(url)}`, mode: 'json_contents' as const }
   ];
 
   // 轮询代理
@@ -553,7 +554,77 @@ function findHrefByLabel(html: string, baseUrl: string, label: string): string {
   const target = String(label ?? '').toLowerCase();
   console.log(`[Discover] 查找链接: label=${label} base=${baseUrl} htmlLength=${html.length}`);
 
-  // 1. 尝试使用 DOMParser 解析 (浏览器环境)
+  // 1. 针对 markdown的内容进行解析
+  const mdMarker = 'Markdown Content:';
+  const mdStart = html.indexOf(mdMarker);
+  if (mdStart >= 0) {
+    const md = html.slice(mdStart + mdMarker.length).trim();
+    const normalizedTarget = target.replace(/\s+/g, ' ').trim();
+    const linkRe = /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g;
+    const candidates: { text: string; url: string; score: number }[] = [];
+    const simplify = (input: string) => {
+      const raw = decodeHtmlEntities(String(input ?? ''));
+      const removedImages = raw.replace(/!\[[^\]]*]\([^)]+\)/g, ' ');
+      const removedHeadings = removedImages.replace(/(^|\s)#{1,6}\s+/g, ' ');
+      const removedDashes = removedHeadings.replace(/[-–—]{3,}/g, ' ');
+      const cleaned = removedDashes
+        .replace(/[^\p{L}\p{N}]+/gu, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+      return cleaned;
+    };
+
+    let matchedLinks = 0;
+    let linkMatch: RegExpExecArray | null;
+    while ((linkMatch = linkRe.exec(md)) !== null) {
+      const text = String(linkMatch[1] ?? '');
+      const url = String(linkMatch[2] ?? '');
+      const textNorm = simplify(text);
+      if (!textNorm) continue;
+      if (!textNorm.includes(normalizedTarget)) continue;
+      matchedLinks += 1;
+      let score = 1000 - textNorm.length;
+      const urlLower = url.toLowerCase();
+      if (normalizedTarget.includes('top paid') && urlLower.includes('chart=top-paid')) score += 300;
+      if (normalizedTarget.includes('top free') && urlLower.includes('chart=top-free')) score += 300;
+      if (normalizedTarget.includes('top grossing') && urlLower.includes('chart=top-grossing')) score += 300;
+      if (urlLower.includes('/mac/charts')) score += 80;
+      candidates.push({ text, url, score });
+    }
+
+    if (candidates.length > 0) {
+      candidates.sort((a, b) => b.score - a.score);
+      const picked = candidates[0];
+      const normalized = normalizeAppleUrl(picked.url, baseUrl);
+      console.log(
+        `[Discover] Markdown 解析命中: label=${label} matchedLinks=${matchedLinks} pickedText=${clipDebug(picked.text, 160)} pickedUrl=${clipDebug(
+          normalized,
+          220
+        )}`
+      );
+      return normalized;
+    }
+
+    const lines = md.split('\n');
+    const targetLineIdx = lines.findIndex(l => simplify(l).includes(normalizedTarget));
+    if (targetLineIdx >= 0) {
+      const scanStart = Math.max(0, targetLineIdx - 2);
+      const scanEnd = Math.min(lines.length, targetLineIdx + 6);
+      for (let i = scanStart; i < scanEnd; i++) {
+        const line = lines[i];
+        const m = line.match(/\((https?:\/\/[^)\s]+)\)/);
+        if (m && m[1]) {
+          const normalized = normalizeAppleUrl(m[1], baseUrl);
+          console.log(`[Discover] Markdown 行扫描命中: label=${label} line=${i + 1} url=${clipDebug(normalized, 220)}`);
+          return normalized;
+        }
+      }
+    }
+    console.warn(`[Discover] Markdown 解析未命中: label=${label} mdLength=${md.length}`);
+  }
+
+  // 2. 尝试使用 DOMParser 解析 (浏览器环境)
   const hasDomParser = typeof DOMParser !== 'undefined';
   if (hasDomParser) {
     const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -604,7 +675,7 @@ function findHrefByLabel(html: string, baseUrl: string, label: string): string {
     console.warn(`[Discover] 当前环境无 DOMParser，且 Markdown 回退解析未命中: label=${label}`);
   }
 
-  // 2. 尝试使用正则表达式匹配 (作为 DOMParser 的回退或补充)
+  // 3. 尝试使用正则表达式匹配 (作为 DOMParser 的回退或补充)
   const idx = html.indexOf(label);
   if (idx >= 0) {
     const window = html.slice(Math.max(0, idx - 800), Math.min(html.length, idx + 1200));
@@ -624,7 +695,7 @@ function findHrefByLabel(html: string, baseUrl: string, label: string): string {
       }
     }
   }
-  
+
   return '';
 }
 
@@ -704,6 +775,16 @@ function mapDetailToAppData(detail: AppDetail, rank: number): AppData {
  * 4. 调用 Lookup API 获取详细信息
  */
 export async function fetchDiscoverFromWeb(countryCode: string = 'us'): Promise<DiscoverSection[]> {
+  const g: any = typeof globalThis !== 'undefined' ? (globalThis as any) : {};
+  const isWebRuntime =
+    typeof g.window !== 'undefined' ||
+    typeof g.document !== 'undefined' ||
+    (typeof g.navigator !== 'undefined' && typeof g.location !== 'undefined');
+  const isDev = Boolean((import.meta as any)?.env?.DEV);
+  if (isWebRuntime && !isDev) {
+    console.warn('[DiscoverWeb] 浏览器非开发环境将使用第三方代理抓取(可能不稳定)');
+  }
+
   console.log(`[DiscoverWeb] 开始从网页抓取 Discover 数据: country=${countryCode}`);
   const discoverUrl = `https://apps.apple.com/${countryCode}/mac/discover`;
   const sections: DiscoverSection[] = [];
