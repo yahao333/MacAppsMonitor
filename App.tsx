@@ -10,7 +10,7 @@ import {
   SidebarItem
 } from './constants';
 import { fetchAppStoreData, fetchDiscoverData, DiscoverSection, fetchDiscoverFromWeb, fetchDiscoverDataProgressive } from './services/appleApi';
-import { RefreshIcon, SettingsIcon } from './components/Icons';
+import { RefreshIcon, SettingsIcon, MailIcon } from './components/Icons';
 import AppDetails from './components/AppDetails';
 import Settings from './components/Settings';
 
@@ -382,15 +382,33 @@ const App: React.FC = () => {
             </div>
           )}
 
-          <footer className="mt-12 pb-4 text-center">
-             <div className="border-t border-slate-200 dark:border-slate-800 pt-8">
-               <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">
-                 {t.copyright}
-               </p>
-               <p className="text-sm text-slate-500 dark:text-slate-400">
-                 {t.contact}: <a href="mailto:apprank@outlook.com" className="text-blue-600 dark:text-blue-400 hover:underline">Jax (apprank@outlook.com)</a>
-               </p>
-             </div>
+          <footer className="mt-12 py-8 border-t border-slate-200 dark:border-slate-800">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+              <div className="flex flex-col items-center md:items-start">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-6 h-6 bg-blue-600 rounded-md flex items-center justify-center text-white font-bold text-xs shadow-md shadow-blue-500/30">
+                    M
+                  </div>
+                  <span className="text-sm font-bold text-slate-900 dark:text-slate-100">MacAppsMonitor</span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {t.copyright}
+                </p>
+              </div>
+              
+              <div className="flex items-center gap-6">
+                <a 
+                  href="mailto:apprank@outlook.com" 
+                  className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors group"
+                  title={t.contact}
+                >
+                  <div className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/30 transition-colors">
+                    <MailIcon className="w-4 h-4" />
+                  </div>
+                  <span className="font-medium">Jax</span>
+                </a>
+              </div>
+            </div>
           </footer>
         </main>
       </div>
