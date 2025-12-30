@@ -60,7 +60,7 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     ]
   },
   {
-    id: 'work', label: 'Work', type: 'group', icon: 'Briefcase',
+    id: 'work', label: 'Work', type: 'group', icon: 'Briefcase', disabled: true,
     children: [
       { id: 'productivity', label: 'Productivity', type: 'category', genreId: 6007 },
       { id: 'business', label: 'Business', type: 'category', genreId: 6000 },
