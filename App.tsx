@@ -300,21 +300,22 @@ const App: React.FC = () => {
       <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-40 border-b border-slate-200 dark:border-slate-800 flex-none">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-blue-500/30">
+            <div className="w-11 h-11 bg-blue-600 rounded-[10px] flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-blue-500/30 flex-shrink-0">
               M
             </div>
-            <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300">
-              MacAppsMonitor
-            </h1>
-            <span className="mx-2 text-slate-300 dark:text-slate-700">|</span>
+            <div className="flex flex-col justify-center h-11">
+              <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 leading-none mb-1">
+                MacAppsMonitor
+              </h1>
+              <span className="text-sm font-medium text-slate-500 dark:text-slate-400 leading-none">
+                {currentCountry.name[lang]}
+              </span>
+            </div>
+            <span className="mx-2 text-slate-300 dark:text-slate-700 h-8 flex items-center">|</span>
             <span className="text-sm font-medium text-slate-500 dark:text-slate-400">{currentTitle}</span>
           </div>
 
           <div className="flex items-center gap-4">
-             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300">
-               <span>{currentCountry.name[lang]}</span>
-             </div>
-
              <button 
                onClick={() => loadData(true)} 
                disabled={loading}
