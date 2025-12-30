@@ -69,19 +69,19 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     ]
   },
   {
-    id: 'play', label: 'Play', type: 'group', icon: 'Rocket',
+    id: 'play', label: 'Play', type: 'group', icon: 'Rocket', disabled: true,
     children: [
       { id: 'games', label: 'Games', type: 'category', genreId: 6014 }
     ]
   },
   {
-    id: 'develop', label: 'Develop', type: 'group', icon: 'Code',
+    id: 'develop', label: 'Develop', type: 'group', icon: 'Code', disabled: true,
     children: [
       { id: 'developer-tools', label: 'Developer Tools', type: 'category', genreId: 6026 }
     ]
   },
   {
-    id: 'categories', label: 'Categories', type: 'group', icon: 'Grid',
+    id: 'categories', label: 'Categories', type: 'group', icon: 'Grid', disabled: true,
     children: [
       { id: 'cat-productivity', label: 'Productivity', type: 'category', genreId: 6007 },
       { id: 'cat-utilities', label: 'Utilities', type: 'category', genreId: 6002 },
