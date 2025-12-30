@@ -558,7 +558,6 @@ function findHrefByLabel(html: string, baseUrl: string, label: string): string {
   if (hasDomParser) {
     const doc = new DOMParser().parseFromString(html, 'text/html');
     // 打印doc的内容
-    console.log(`[Discover] DOM 解析完成: doc=${doc.documentElement.outerHTML}`);
     const anchors = Array.from(doc.querySelectorAll('a[href]'));
     console.log(`[Discover] DOM 解析完成: anchors=${anchors.length}`);
 
