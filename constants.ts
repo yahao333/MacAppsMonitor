@@ -43,12 +43,13 @@ export interface SidebarItem {
   icon?: string;
   type: 'group' | 'category' | 'link';
   genreId?: number;
+  disabled?: boolean;
   children?: SidebarItem[];
 }
 
 export const SIDEBAR_ITEMS: SidebarItem[] = [
   { id: 'discover', label: 'Discover', type: 'link', icon: 'Star' },
-  { id: 'arcade', label: 'Arcade', type: 'link', icon: 'GameController', genreId: undefined }, // Skip for now
+  { id: 'arcade', label: 'Arcade', type: 'link', icon: 'GameController', genreId: undefined, disabled: true },
   { 
     id: 'create', label: 'Create', type: 'group', icon: 'Brush',
     children: [

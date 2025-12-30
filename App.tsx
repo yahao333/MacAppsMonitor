@@ -236,6 +236,7 @@ const App: React.FC = () => {
   }, [loadData]);
 
   const handleSidebarClick = (item: SidebarItem) => {
+    if (item.disabled) return;
     if (item.type === 'link' && item.id === 'discover') {
       setSelectedSidebarId(item.id);
       setSelectedGenre(undefined);
@@ -261,16 +262,17 @@ const App: React.FC = () => {
   const renderSidebarItem = (item: SidebarItem, depth = 0) => {
     const isSelected = selectedSidebarId === item.id;
     const hasChildren = item.children && item.children.length > 0;
+    const isDisabled = !!item.disabled;
     
     return (
       <div key={item.id} className="select-none">
         <div 
-          className={`flex items-center px-3 py-2 text-sm font-medium rounded-md cursor-pointer mb-1 transition-colors
+          className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${isDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} mb-1 transition-colors
             ${isSelected 
               ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' 
-              : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}
+              : `${isDisabled ? 'text-slate-400 dark:text-slate-600' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
             ${depth > 0 ? 'ml-4' : ''}`}
-          onClick={() => handleSidebarClick(item)}
+          onClick={() => { if (!isDisabled) handleSidebarClick(item); }}
         >
           {item.icon && <SidebarIcon name={item.icon} />}
           <span className="truncate flex-1">{item.label}</span>
