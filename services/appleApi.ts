@@ -9,7 +9,7 @@ import { API_BASE_LOOKUP } from '../constants';
 // 原因: 浏览器的同源策略 (CORS) 限制了前端直接访问 Apple RSS API。
 // 解决方案: 我们使用免费的 CORS 代理服务作为中间人转发请求。
 const PROXY_LIST = [
-  'https://api.allorigins.win/get?url=',      // AllOrigins: 返回 JSON 格式，内容在 contents 字段
+  'https://api.allorigins.win/get?disableCache=true&url=',      // AllOrigins: 返回 JSON 格式，内容在 contents 字段
   'https://corsproxy.io/?',                   // CORSProxy: 直接透传响应
   'https://thingproxy.freeboard.io/fetch/'    // ThingProxy: 备用代理
 ];
@@ -45,6 +45,8 @@ interface CacheItem<T> {
 // ==========================================
 
 function useDevProxyIfWeb(url: string): string {
+  const isDev = Boolean((import.meta as any)?.env?.DEV);
+  if (!isDev) return url;
   const g: any = typeof globalThis !== 'undefined' ? (globalThis as any) : {};
   const isWeb =
     typeof g.window !== 'undefined' ||
@@ -60,6 +62,13 @@ function useDevProxyIfWeb(url: string): string {
     return `/proxy/itunes/${path}`;
   }
   return url;
+}
+
+function buildProxyUrl(proxyBase: string, url: string): string {
+  if (proxyBase.includes('thingproxy.freeboard.io/fetch/')) {
+    return `${proxyBase}${url}`;
+  }
+  return `${proxyBase}${encodeURIComponent(url)}`;
 }
 
 /**
@@ -96,7 +105,7 @@ async function smartFetch(url: string, retries = 3): Promise<any> {
 
   // 2. 轮询代理列表
   for (const proxyBase of PROXY_LIST) {
-    const proxyUrl = `${proxyBase}${encodeURIComponent(url)}`;
+    const proxyUrl = buildProxyUrl(proxyBase, url);
     console.log(`[网络] 尝试代理 ${url} -> ${proxyUrl}`);
     
     try {
@@ -124,7 +133,11 @@ async function smartFetch(url: string, retries = 3): Promise<any> {
   }
 
   // 所有方式都失败
-  throw lastError || new Error('所有网络请求方式均失败');
+  if (lastError instanceof Error) {
+    lastError.message = `[网络] 所有网络请求方式均失败: url=${url} last=${lastError.message}`;
+    throw lastError;
+  }
+  throw new Error(`[网络] 所有网络请求方式均失败: url=${url} last=${String(lastError || '')}`);
 }
 
 /**
@@ -169,7 +182,7 @@ async function smartFetchText(url: string): Promise<string> {
   const textProxies = [
     { base: 'https://r.jina.ai/http://', url: jinaUrl, mode: 'text' as const },
     { base: 'https://corsproxy.io/?', url: `https://corsproxy.io/?${encodeURIComponent(url)}`, mode: 'text' as const },
-    { base: 'https://thingproxy.freeboard.io/fetch/', url: `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(url)}`, mode: 'text' as const },
+    { base: 'https://thingproxy.freeboard.io/fetch/', url: `https://thingproxy.freeboard.io/fetch/${url}`, mode: 'text' as const },
     // 浏览器环境下避免使用 AllOrigins 获取文本，因为它返回 JSON
     ...(isWebRuntime
       ? []
@@ -207,7 +220,11 @@ async function smartFetchText(url: string): Promise<string> {
       continue;
     }
   }
-  throw lastError || new Error('所有文本请求方式均失败');
+  if (lastError instanceof Error) {
+    lastError.message = `[网络] 所有文本请求方式均失败: url=${url} last=${lastError.message}`;
+    throw lastError;
+  }
+  throw new Error(`[网络] 所有文本请求方式均失败: url=${url} last=${String(lastError || '')}`);
 }
 
 // ==========================================
@@ -540,6 +557,8 @@ function findHrefByLabel(html: string, baseUrl: string, label: string): string {
   const hasDomParser = typeof DOMParser !== 'undefined';
   if (hasDomParser) {
     const doc = new DOMParser().parseFromString(html, 'text/html');
+    // 打印doc的内容
+    console.log(`[Discover] DOM 解析完成: doc=${doc.documentElement.outerHTML}`);
     const anchors = Array.from(doc.querySelectorAll('a[href]'));
     console.log(`[Discover] DOM 解析完成: anchors=${anchors.length}`);
 
@@ -573,7 +592,17 @@ function findHrefByLabel(html: string, baseUrl: string, label: string): string {
       }
     }
   } else {
-    console.warn(`[Discover] 当前环境无 DOMParser，跳过 DOM 锚点解析: label=${label}`);
+    const escaped = escapeRegExp(label);
+    const mdRe = new RegExp(`\\[[^\\]]*${escaped}[^\\]]*\\]\\(([^)\\s]+)\\)`, 'i');
+    const mdMatch = html.match(mdRe);
+    if (mdMatch && mdMatch[1]) {
+      const normalized = normalizeAppleUrl(mdMatch[1], baseUrl);
+      if (normalized) {
+        console.log(`[Discover] Markdown 回退解析命中: label=${label} url=${normalized}`);
+        return normalized;
+      }
+    }
+    console.warn(`[Discover] 当前环境无 DOMParser，且 Markdown 回退解析未命中: label=${label}`);
   }
 
   // 2. 尝试使用正则表达式匹配 (作为 DOMParser 的回退或补充)
