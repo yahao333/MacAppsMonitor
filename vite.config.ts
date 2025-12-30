@@ -29,6 +29,7 @@ export default defineConfig(({ mode }) => {
       test: {
         globals: true,
         environment: 'happy-dom',
+        passWithNoTests: true,
       },
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),

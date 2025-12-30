@@ -44,9 +44,7 @@ interface CacheItem<T> {
 // 网络请求核心工具
 // ==========================================
 
-function useDevProxyIfWeb(url: string): string {
-  const isDev = Boolean((import.meta as any)?.env?.DEV);
-  if (!isDev) return url;
+function useSameOriginProxyIfWeb(url: string): string {
   const g: any = typeof globalThis !== 'undefined' ? (globalThis as any) : {};
   const isWeb =
     typeof g.window !== 'undefined' ||
@@ -87,7 +85,7 @@ async function smartFetch(url: string, retries = 3): Promise<any> {
   // 1. 尝试直接请求
   // 某些环境 (如非浏览器环境或目标 API 支持 CORS) 可以直接请求
   try {
-    const directUrl = useDevProxyIfWeb(url);
+    const directUrl = useSameOriginProxyIfWeb(url);
     console.log(`[网络] 尝试直接请求: ${directUrl} (orig=${url})`);
     const response = await fetch(directUrl);
     if (response.ok) {
@@ -156,11 +154,11 @@ async function smartFetchText(url: string): Promise<string> {
   const isDev = Boolean((import.meta as any)?.env?.DEV);
   
   // 1. 尝试直接请求
-  if (isWebRuntime && !isDev && url.startsWith('https://apps.apple.com/')) {
+  if (isWebRuntime && !isDev && url.startsWith('https://apps.apple.com/') && useSameOriginProxyIfWeb(url) === url) {
     console.warn(`[网络] 已跳过文本直连(浏览器非开发环境容易触发CORS): url=${url}`);
   } else {
     try {
-      const directUrl = useDevProxyIfWeb(url);
+      const directUrl = useSameOriginProxyIfWeb(url);
       console.log(`[网络] 尝试直接文本请求: ${directUrl} (orig=${url})`);
       const response = await fetch(directUrl);
       if (response.ok) {

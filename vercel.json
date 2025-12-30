@@ -1,0 +1,13 @@
+{
+  "rewrites": [
+    {
+      "source": "/proxy/itunes/:path*",
+      "destination": "https://itunes.apple.com/:path*"
+    },
+    {
+      "source": "/proxy/apps/:path*",
+      "destination": "https://apps.apple.com/:path*"
+    }
+  ]
+}
+
