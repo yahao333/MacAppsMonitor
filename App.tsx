@@ -381,6 +381,17 @@ const App: React.FC = () => {
               )}
             </div>
           )}
+
+          <footer className="mt-12 pb-4 text-center">
+             <div className="border-t border-slate-200 dark:border-slate-800 pt-8">
+               <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">
+                 {t.copyright}
+               </p>
+               <p className="text-sm text-slate-500 dark:text-slate-400">
+                 {t.contact}: <a href="mailto:apprank@outlook.com" className="text-blue-600 dark:text-blue-400 hover:underline">Jax (apprank@outlook.com)</a>
+               </p>
+             </div>
+          </footer>
         </main>
       </div>
 

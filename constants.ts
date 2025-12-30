@@ -192,6 +192,8 @@ export const TRANSLATIONS: Record<Language, any> = {
     errorFetch: '无法获取 {country} 的 {chart} 排行榜',
     errorFormat: ': API 数据格式异常',
     errorNetwork: ': 网络连接超时或代理失效',
-    appVersion: '应用版本'
+    appVersion: '应用版本',
+    contact: '联系方式',
+    copyright: '© 2025 MacAppsMonitor. 保留所有权利。'
   }
 };
