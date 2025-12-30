@@ -108,32 +108,13 @@ const Settings: React.FC<SettingsProps> = ({ isOpen, onClose, settings, onSettin
             </p>
           </div>
 
-          {/* Version Display */}
+          {/* App Version */}
           <div>
             <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
-              {t.versionDisplay}
+              {t.appVersion}
             </label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => onSettingsChange({ showVersion: true })}
-                className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-all ${
-                  settings.showVersion
-                    ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/20'
-                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-blue-500'
-                }`}
-              >
-                {t.show}
-              </button>
-              <button
-                onClick={() => onSettingsChange({ showVersion: false })}
-                className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-all ${
-                  !settings.showVersion
-                    ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/20'
-                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-blue-500'
-                }`}
-              >
-                {t.hide}
-              </button>
+            <div className="px-4 py-2.5 rounded-xl text-sm font-bold border bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+              {import.meta.env.APP_VERSION || '0.0.0'}
             </div>
           </div>
         </div>

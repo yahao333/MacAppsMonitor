@@ -163,8 +163,7 @@ const App: React.FC = () => {
     return {
       refreshInterval: DEFAULT_INTERVAL,
       language: 'en',
-      countryCode: 'us',
-      showVersion: true
+      countryCode: 'us'
     };
   });
 
@@ -327,10 +326,11 @@ const App: React.FC = () => {
 
              <button 
                onClick={() => setIsSettingsOpen(true)}
-               className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
+               className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                title={t.settings}
              >
-               <SettingsIcon />
+               <SettingsIcon className="w-5 h-5" />
+               <span className="hidden sm:inline">{t.settings}</span>
              </button>
           </div>
         </div>
@@ -389,7 +389,6 @@ const App: React.FC = () => {
         isOpen={!!selectedAppId} 
         onClose={() => setSelectedAppId(null)}
         countryCode={settings.countryCode}
-        showVersion={settings.showVersion}
       />
       
       <Settings

@@ -140,5 +140,4 @@ export interface AppSettings {
   refreshInterval: RefreshInterval;
   language: Language;
   countryCode: string;
-  showVersion: boolean;
 }

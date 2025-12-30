@@ -155,10 +155,8 @@ export const TRANSLATIONS: Record<Language, any> = {
     supportedDevices: 'Devices',
     errorFetch: 'Unable to fetch {chart} rankings for {country}',
     errorFormat: ': API data format error',
-    errorNetwork: ': Network timeout or proxy failure'
-    ,versionDisplay: 'Version display'
-    ,show: 'Show'
-    ,hide: 'Hide'
+    errorNetwork: ': Network timeout or proxy failure',
+    appVersion: 'App Version'
   },
   zh: {
     title: 'Mac 应用商店监控',
@@ -193,9 +191,7 @@ export const TRANSLATIONS: Record<Language, any> = {
     supportedDevices: '支持设备',
     errorFetch: '无法获取 {country} 的 {chart} 排行榜',
     errorFormat: ': API 数据格式异常',
-    errorNetwork: ': 网络连接超时或代理失效'
-    ,versionDisplay: '版本号显示'
-    ,show: '显示'
-    ,hide: '隐藏'
+    errorNetwork: ': 网络连接超时或代理失效',
+    appVersion: '应用版本'
   }
 };
