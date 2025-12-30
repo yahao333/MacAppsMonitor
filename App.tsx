@@ -327,11 +327,10 @@ const App: React.FC = () => {
 
              <button 
                onClick={() => setIsSettingsOpen(true)}
-               className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+               className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
                title={t.settings}
              >
-               <SettingsIcon className="w-5 h-5" />
-               <span className="hidden sm:inline">{t.settings}</span>
+               <SettingsIcon className="w-6 h-6" />
              </button>
           </div>
         </div>
