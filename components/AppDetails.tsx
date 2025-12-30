@@ -10,9 +10,10 @@ interface AppDetailsProps {
   isOpen: boolean;
   onClose: () => void;
   countryCode: string;
+  showVersion?: boolean;
 }
 
-const AppDetails: React.FC<AppDetailsProps> = ({ app, isOpen, onClose, countryCode }) => {
+const AppDetails: React.FC<AppDetailsProps> = ({ app, isOpen, onClose, countryCode, showVersion = true }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [details, setDetails] = useState<AppDetail | null>(null);
@@ -224,8 +225,12 @@ const AppDetails: React.FC<AppDetailsProps> = ({ app, isOpen, onClose, countryCo
                     <dd className="text-sm font-bold text-slate-900 dark:text-slate-100 select-all font-mono">{details.bundleId}</dd>
                   </div>
                   <div>
-                    <dt className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">{t.version}</dt>
-                    <dd className="text-sm font-bold text-slate-900 dark:text-slate-100">{details.version}</dd>
+                    {showVersion && (
+                      <>
+                        <dt className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">{t.version}</dt>
+                        <dd className="text-sm font-bold text-slate-900 dark:text-slate-100">{details.version}</dd>
+                      </>
+                    )}
                   </div>
                   <div>
                     <dt className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Released</dt>

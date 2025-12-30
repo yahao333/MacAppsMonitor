@@ -107,6 +107,35 @@ const Settings: React.FC<SettingsProps> = ({ isOpen, onClose, settings, onSettin
               {t.autoRefreshNote}
             </p>
           </div>
+
+          {/* Version Display */}
+          <div>
+            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
+              {t.versionDisplay}
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => onSettingsChange({ showVersion: true })}
+                className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-all ${
+                  settings.showVersion
+                    ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/20'
+                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-blue-500'
+                }`}
+              >
+                {t.show}
+              </button>
+              <button
+                onClick={() => onSettingsChange({ showVersion: false })}
+                className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-all ${
+                  !settings.showVersion
+                    ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/20'
+                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-blue-500'
+                }`}
+              >
+                {t.hide}
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">

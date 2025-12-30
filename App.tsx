@@ -163,7 +163,8 @@ const App: React.FC = () => {
     return {
       refreshInterval: DEFAULT_INTERVAL,
       language: 'en',
-      countryCode: 'us'
+      countryCode: 'us',
+      showVersion: true
     };
   });
 
@@ -388,13 +389,14 @@ const App: React.FC = () => {
         isOpen={!!selectedAppId} 
         onClose={() => setSelectedAppId(null)}
         countryCode={settings.countryCode}
+        showVersion={settings.showVersion}
       />
       
       <Settings
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         settings={settings}
-        onUpdate={updateSettings}
+        onSettingsChange={updateSettings}
       />
     </div>
   );
