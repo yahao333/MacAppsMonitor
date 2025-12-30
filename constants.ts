@@ -1,7 +1,6 @@
 
 import { ChartType, RefreshInterval, Language, Country } from './types';
 
-export const API_BASE_RSS = 'https://rss.marketingtools.apple.com/api/v2';
 export const API_BASE_LOOKUP = 'https://itunes.apple.com/lookup';
 
 export const SUPPORTED_COUNTRIES: Country[] = [
@@ -17,19 +16,19 @@ export const SUPPORTED_COUNTRIES: Country[] = [
 
 export const CHART_LABELS: Record<Language, Record<ChartType, string>> = {
   en: {
-    'top-free': 'Top Free',
-    'top-paid': 'Top Paid',
-    'top-grossing': 'Top Grossing',
+    'top-free': 'Top Free Apps',
+    'top-paid': 'Top Paid Apps',
+    'top-grossing': 'Top Grossing Apps',
     'new-apps': 'New Apps',
-    'new-free': 'New Free',
-    'new-paid': 'New Paid',
+    'new-free': 'New Free Apps',
+    'new-paid': 'New Paid Apps',
     'top-free-games': 'Top Free Games',
     'top-paid-games': 'Top Paid Games'
   },
   zh: {
-    'top-free': '免费榜',
-    'top-paid': '付费榜',
-    'top-grossing': '畅销榜',
+    'top-free': '免费应用榜',
+    'top-paid': '付费应用榜',
+    'top-grossing': '畅销应用榜',
     'new-apps': '新上架',
     'new-free': '新免费',
     'new-paid': '新付费',

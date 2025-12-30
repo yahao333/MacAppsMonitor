@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest"
+    "test": "vitest",
+    "print:discover": "node ./print-discover.js"
   },
   "dependencies": {
     "react": "^19.2.3",

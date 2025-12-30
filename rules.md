@@ -11,7 +11,7 @@
 - 修改逻辑时，应同步更新相关注释以保持一致性。
 
 ## 3. 调试要求
-- 所有的异步请求（API Call）、本地存储读写、关键状态变更（State Change）必须添加 `console.debug` 或 `console.log` 输出详细的调试信息。
+- 所有的异步请求（API Call）、本地存储读写、关键状态变更（State Change）必须添加 `console.log` 或 `console.log` 输出详细的调试信息。
 - 调试信息应包含：动作名称、参数、结果（成功/失败原因）。
 
 ## 4. 功能核对

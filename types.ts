@@ -95,6 +95,7 @@ export interface AppDetail {
   trackId: number;
   trackName: string;
   sellerName: string;
+  artistName?: string;
   trackViewUrl: string;
   genres: string[];
   primaryGenreName: string;
@@ -109,6 +110,8 @@ export interface AppDetail {
   version: string;
   currentVersionReleaseDate: string;
   artworkUrl512: string;
+  artworkUrl100?: string;
+  artworkUrl60?: string;
   bundleId?: string;
   minimumOsVersion?: string;
   contentAdvisoryRating?: string;

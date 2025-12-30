@@ -9,6 +9,18 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        proxy: {
+          '/proxy/apps': {
+            target: 'https://apps.apple.com',
+            changeOrigin: true,
+            rewrite: (path) => path.replace(/^\/proxy\/apps/, ''),
+          },
+          '/proxy/itunes': {
+            target: 'https://itunes.apple.com',
+            changeOrigin: true,
+            rewrite: (path) => path.replace(/^\/proxy\/itunes/, ''),
+          }
+        }
       },
       plugins: [react()],
       test: {

@@ -9,7 +9,7 @@ import {
   SIDEBAR_ITEMS,
   SidebarItem
 } from './constants';
-import { fetchAppStoreData, fetchDiscoverData, DiscoverSection } from './services/appleApi';
+import { fetchAppStoreData, fetchDiscoverData, DiscoverSection, fetchDiscoverFromWeb, fetchDiscoverDataProgressive } from './services/appleApi';
 import { RefreshIcon, SettingsIcon } from './components/Icons';
 import AppDetails from './components/AppDetails';
 import Settings from './components/Settings';
@@ -28,15 +28,22 @@ const SidebarIcon = ({ name }: { name: string }) => {
   }
 };
 
+const FALLBACK_ICON_SVG = (() => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#e2e8f0"/><stop offset="1" stop-color="#cbd5e1"/></linearGradient></defs><rect width="128" height="128" rx="28" fill="url(#g)"/><path d="M38 86V42h10l16 26 16-26h10v44H80V60l-16 26-16-26v26H38z" fill="#475569"/></svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+})();
+
 // 横向滚动的 App 列表组件
 const SectionList = ({ 
   title, 
   apps, 
-  onAppClick 
+  onAppClick,
+  error
 }: { 
   title: string; 
   apps: AppData[]; 
   onAppClick: (appId: string) => void;
+  error?: string;
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -54,7 +61,12 @@ const SectionList = ({
     <div className="mb-8" key={title}>
       <div className="flex items-center justify-between mb-4 px-1">
         <h2 className="text-xl font-bold text-slate-900 dark:text-white">{title}</h2>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-3">
+          {apps.length === 0 && error && (
+            <span className="text-xs px-2 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800">
+              {error}
+            </span>
+          )}
           <button 
             onClick={() => scroll('left')}
             className="p-1.5 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
@@ -86,10 +98,18 @@ const SectionList = ({
                 {app.rank}
               </span>
               <img 
-                src={app.iconUrl} 
+                src={app.iconUrl || FALLBACK_ICON_SVG} 
                 alt={app.name} 
-                className="w-14 h-14 rounded-[12px] shadow-sm border border-slate-100 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 flex-shrink-0"
+                className="w-14 h-14 rounded-[12px] shadow-sm border border-slate-100 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 flex-shrink-0 object-cover"
                 loading="lazy"
+                decoding="async"
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  if (e.currentTarget.src !== FALLBACK_ICON_SVG) {
+                    console.warn(`[图片] 图标加载失败，使用占位图: id=${app.id} url=${app.iconUrl}`);
+                    e.currentTarget.src = FALLBACK_ICON_SVG;
+                  }
+                }}
               />
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-slate-900 dark:text-white truncate text-sm leading-tight mb-0.5" title={app.name}>{app.name}</h3>
@@ -156,32 +176,54 @@ const App: React.FC = () => {
     `${country}_${chart}_${genre || 'all'}`;
 
   const loadData = useCallback(async (force: boolean = false) => {
-    // 无论是 Discover 还是 Category，都使用 "discover" 作为缓存键前缀的一部分
-    // 如果是 Category，selectedGenre 会有值
     const cacheKey = getCacheKey(settings.countryCode, 'discover_view', selectedGenre);
-    const now = Date.now();
-    
-    // 简单的内存缓存检查 (lastUpdated)
-    if (!force && lastUpdated === now) {
-      return;
-    }
-
-    console.debug(`[Discover] 开始获取聚合数据: ${settings.countryCode} - Genre: ${selectedGenre}`);
+    console.log(`[Discover] 开始获取聚合数据: country=${settings.countryCode} genre=${selectedGenre}`);
     setLoading(true);
     setError(null);
 
     try {
-      // 总是调用 fetchDiscoverData 来获取聚合的 Sections
-      const sections = await fetchDiscoverData(settings.countryCode, selectedGenre);
-      setDiscoverData(sections);
-      setLastUpdated(now);
+      setDiscoverData([]);
+      const merged = new Map<string, DiscoverSection>();
+
+      // 1) 渐进式获取 RSS 榜单，完成一个就更新一次 UI
+      const rssPromise = fetchDiscoverDataProgressive(
+        settings.countryCode,
+        selectedGenre,
+        (section) => {
+          const existing = merged.get(section.type);
+          if (!existing || (existing.data.length === 0 && section.data.length > 0)) {
+            merged.set(section.type, section);
+            setDiscoverData(Array.from(merged.values()));
+          }
+        }
+      );
+
+      // 2) 同时启动网页抓取，完成后再合并
+      const webPromise = fetchDiscoverFromWeb(settings.countryCode);
+
+      const [rssRes, webRes] = await Promise.allSettled([rssPromise, webPromise]);
+      const webSections = webRes.status === 'fulfilled' ? (webRes.value || []) : [];
+      webSections.forEach(sec => {
+        const existing = merged.get(sec.type);
+        if (!existing || (existing.data.length === 0 && sec.data.length > 0)) {
+          merged.set(sec.type, sec);
+        }
+      });
+      setDiscoverData(Array.from(merged.values()));
+
+      const rssFailed = rssRes.status === 'rejected';
+      const webFailed = webRes.status === 'rejected';
+      if ((rssFailed && webFailed) || (Array.from(merged.values()).length === 0)) {
+        setError(t.errorNetwork);
+      }
+      setLastUpdated(Date.now());
     } catch (err: any) {
       console.error(`[Discover] 获取失败:`, err);
       setError(t.errorNetwork);
     } finally {
       setLoading(false);
     }
-  }, [settings.countryCode, selectedGenre, lastUpdated, t]);
+  }, [settings.countryCode, selectedGenre, t]);
 
   useEffect(() => {
     loadData();
@@ -323,12 +365,13 @@ const App: React.FC = () => {
                     <p className="text-slate-500 dark:text-slate-400">{t.noData}</p>
                  </div>
               ) : (
-                discoverData.filter(section => section.data.length > 0).map((section) => (
+                discoverData.map((section) => (
                   <div key={section.type}>
                     <SectionList 
                       title={CHART_LABELS[lang][section.type] || section.title}
                       apps={section.data}
                       onAppClick={setSelectedAppId}
+                      error={section.error ? `${t.errorFetch.replace('{chart}', CHART_LABELS[lang][section.type] || section.title).replace('{country}', currentCountry.name[lang])} ${section.error}` : undefined}
                     />
                   </div>
                 ))

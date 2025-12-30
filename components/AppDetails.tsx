@@ -104,7 +104,9 @@ const AppDetails: React.FC<AppDetailsProps> = ({ app, isOpen, onClose, countryCo
              <img 
                 src={app.iconUrl} 
                 alt={app.name} 
-                className="w-20 h-20 rounded-2xl shadow-lg mb-6 animate-pulse"
+                className="w-20 h-20 rounded-2xl shadow-lg mb-6 animate-pulse object-cover"
+                decoding="async"
+                referrerPolicy="no-referrer"
               />
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
             <p className="mt-4 text-slate-500 font-medium">{t.loadingDetails}</p>
@@ -130,6 +132,15 @@ const AppDetails: React.FC<AppDetailsProps> = ({ app, isOpen, onClose, countryCo
                 src={details.artworkUrl512} 
                 alt={details.trackName} 
                 className="w-32 h-32 sm:w-40 sm:h-40 rounded-[22.5%] shadow-xl object-cover bg-slate-200 dark:bg-slate-800 flex-none"
+                decoding="async"
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  const fallback = app.iconUrl || '';
+                  if (fallback && e.currentTarget.src !== fallback) {
+                    console.warn(`[图片] 详情图标加载失败，使用列表图标兜底: id=${app.id} url=${details.artworkUrl512}`);
+                    e.currentTarget.src = fallback;
+                  }
+                }}
               />
               <div className="flex-1 min-w-0">
                 <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-1 break-words">
@@ -186,6 +197,12 @@ const AppDetails: React.FC<AppDetailsProps> = ({ app, isOpen, onClose, countryCo
                     alt="screenshot" 
                     className="h-64 sm:h-96 rounded-2xl shadow-lg bg-slate-100 dark:bg-slate-800 flex-none border border-slate-200 dark:border-slate-800 transition-colors"
                     loading="lazy"
+                    decoding="async"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      console.warn(`[图片] 截图加载失败，隐藏该截图: id=${app.id} url=${url}`);
+                      e.currentTarget.style.display = 'none';
+                    }}
                   />
                 ))}
               </div>
